@@ -127,6 +127,7 @@ const Dashboard = () => {
           ))}
         </div>
       </div>
+      </div>
 
       {/* Items Grid */}
       {loading ? (
