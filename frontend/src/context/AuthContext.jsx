@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect } from 'react';
 
 export const AuthContext = createContext();
 
-export const BACKEND_URL = 'http://localhost:5050';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://auction-b1mv.onrender.com';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
