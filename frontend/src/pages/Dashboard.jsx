@@ -25,8 +25,6 @@ const Dashboard = () => {
         
         if (mode === 'auctioneer') {
           url += `&mode=auctioneer&userId=${user?._id}`;
-        } else if (mode === 'bidder') {
-          url += `&mode=bidder&userId=${user?._id}`;
         }
 
         const response = await fetch(url);
