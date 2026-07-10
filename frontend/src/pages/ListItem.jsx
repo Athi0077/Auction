@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext, BACKEND_URL } from '../context/AuthContext';
 import { Package, IndianRupee, Clock, ShieldAlert, FileText, Image, Percent, Calendar, ChevronDown, Tag } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const ListItem = () => {
   const { token, mode } = useContext(AuthContext);
@@ -25,7 +26,6 @@ const ListItem = () => {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState('');
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -37,10 +37,9 @@ const ListItem = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFormError('');
 
     if (!name || !category || !startingPrice || !duration || !ownershipHistory || !image || !auctionStartDate) {
-      setFormError('Please fill in all required fields and upload an image.');
+      toast.error('Please fill in all required fields and upload an image.');
       return;
     }
 
@@ -70,13 +69,14 @@ const ListItem = () => {
       const data = await response.json();
 
       if (response.ok) {
+        toast.success('Item listed successfully!');
         navigate('/');
       } else {
-        setFormError(data.message || 'Failed to list item.');
+        toast.error(data.message || 'Failed to list item.');
       }
     } catch (error) {
       console.error('Error creating listing:', error);
-      setFormError('Server connection error. Please try again.');
+      toast.error('Server connection error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -91,13 +91,6 @@ const ListItem = () => {
         <p className="text-slate-400 text-sm mb-8">
           Provide clear information, specifications, and history details to attract top bidders.
         </p>
-
-        {formError && (
-          <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-red-500 p-3.5 rounded-xl mb-6 text-sm">
-            <ShieldAlert size={20} className="shrink-0" />
-            <span>{formError}</span>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} encType="multipart/form-data">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

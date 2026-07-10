@@ -49,6 +49,40 @@ app.get('/', (req, res) => {
 // activeAuctions = { [itemId]: { timeLeft: Number, timer: NodeJS.Timeout } }
 const activeAuctions = {};
 
+const restoreActiveAuctions = async () => {
+  try {
+    const liveItems = await Item.find({ status: 'live' });
+    console.log(`Found ${liveItems.length} active auctions to restore.`);
+    
+    liveItems.forEach((item) => {
+      const itemId = item._id.toString();
+      
+      // If there's no end time (old data), or it's in the past, end it immediately
+      if (!item.auctionEndTime || item.auctionEndTime.getTime() <= Date.now()) {
+        endAuction(itemId);
+        return;
+      }
+
+      const timeLeft = Math.floor((item.auctionEndTime.getTime() - Date.now()) / 1000);
+      
+      activeAuctions[itemId] = {
+        timeLeft: timeLeft,
+        timer: setInterval(async () => {
+          if (!activeAuctions[itemId]) return;
+          activeAuctions[itemId].timeLeft--;
+          io.to(itemId).emit('timer_tick', { timeLeft: activeAuctions[itemId].timeLeft });
+
+          if (activeAuctions[itemId].timeLeft <= 0) {
+            await endAuction(itemId);
+          }
+        }, 1000)
+      };
+    });
+  } catch (err) {
+    console.error("Error restoring auctions:", err);
+  }
+};
+
 // Helper to end an auction
 const endAuction = async (itemId) => {
   if (activeAuctions[itemId]) {
@@ -120,6 +154,7 @@ io.on('connection', (socket) => {
       // Update Item in DB
       item.status = 'live';
       item.auctionStartTime = new Date();
+      item.auctionEndTime = new Date(Date.now() + 60000);
       await item.save();
 
       // Setup 60s timer
@@ -183,9 +218,14 @@ io.on('connection', (socket) => {
       item.highestBidder = bidderId;
       item.highestBidderName = bidderName;
       item.bids.push({ bidder: bidderId, bidderName, amount });
-      await item.save();
-
+      
       const isFinalPriceReached = item.finalPrice && amount >= item.finalPrice;
+
+      if (!isFinalPriceReached) {
+        item.auctionEndTime = new Date(Date.now() + 60000); // extend timer in DB
+      }
+      
+      await item.save();
 
       // Reset timer back to 60s if final price is not reached
       if (!isFinalPriceReached) {
@@ -278,6 +318,7 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  await restoreActiveAuctions(); // Restore timers when server starts
 });

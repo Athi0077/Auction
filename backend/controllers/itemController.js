@@ -47,7 +47,7 @@ const createItem = async (req, res) => {
 // @access  Public
 const getItems = async (req, res) => {
   try {
-    const { status, search, mode, userId } = req.query;
+    const { status, search, mode, userId, category, page = 1, limit = 10 } = req.query;
     let query = {};
 
     // Filter by status
@@ -60,22 +60,40 @@ const getItems = async (req, res) => {
       query.name = { $regex: search, $options: 'i' };
     }
 
-    // Filter by mode (if Auctioneer mode is selected and we only want user's items)
+    // Filter by category
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    // Filter by mode
     if (mode === 'auctioneer' && userId) {
       query.seller = userId;
     }
 
-    // Filter by bidder mode (items the bidder has placed bids on or won)
     if (mode === 'bidder' && userId) {
-      // Find items where the user is either the winner or has bid on
       query.$or = [
         { 'bids.bidder': userId },
         { winner: userId }
       ];
     }
 
-    const items = await Item.find(query).sort({ createdAt: -1 });
-    res.json(items);
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const items = await Item.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNumber);
+      
+    const totalItems = await Item.countDocuments(query);
+
+    res.json({
+      items,
+      totalPages: Math.ceil(totalItems / limitNumber),
+      currentPage: pageNumber,
+      totalItems
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });

@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import ListItem from './pages/ListItem';
 import ItemDetail from './pages/ItemDetail';
 import LiveRoom from './pages/LiveRoom';
+import { Toaster } from 'react-hot-toast';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -39,6 +40,13 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster position="top-center" toastOptions={{
+          style: {
+            background: 'var(--bg-secondary)',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }
+        }} />
         <Header />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Routes>

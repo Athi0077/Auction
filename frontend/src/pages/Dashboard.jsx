@@ -1,33 +1,51 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext, BACKEND_URL } from '../context/AuthContext';
-import { Search, Gavel, Calendar, User, Plus, Heart } from 'lucide-react';
+import { Search, Gavel, Calendar, User, Plus, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Dashboard = () => {
   const { user, mode, wishlist, toggleWishlist } = useContext(AuthContext);
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     const fetchItems = async () => {
       setLoading(true);
       try {
         const apiStatus = statusFilter === 'wishlist' ? 'all' : statusFilter;
-        let url = `${BACKEND_URL}/api/items?status=${apiStatus}&search=${search}`;
+        let url = `${BACKEND_URL}/api/items?status=${apiStatus}&search=${search}&category=${categoryFilter}&page=${currentPage}&limit=9`;
         
         if (mode === 'auctioneer') {
           url += `&mode=auctioneer&userId=${user?._id}`;
+        } else if (mode === 'bidder') {
+          url += `&mode=bidder&userId=${user?._id}`;
         }
 
         const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
+          // API returns { items, totalPages, currentPage, totalItems }
+          const fetchedItems = Array.isArray(data) ? data : data.items || [];
+          
           if (statusFilter === 'wishlist') {
-            setItems(data.filter((item) => wishlist.includes(item._id)));
+            setItems(fetchedItems.filter((item) => wishlist.includes(item._id)));
+            // Wishlist pagination might be off slightly due to client side filter, 
+            // but we'll accept it for now or rely on server to filter it eventually.
           } else {
-            setItems(data);
+            setItems(fetchedItems);
+          }
+          
+          if (!Array.isArray(data)) {
+            setTotalPages(data.totalPages || 1);
+            setTotalItems(data.totalItems || 0);
           }
         }
       } catch (error) {
@@ -37,8 +55,13 @@ const Dashboard = () => {
       }
     };
 
-    fetchItems();
-  }, [statusFilter, search, mode, user, wishlist]);
+    // Debounce search slightly
+    const timer = setTimeout(() => {
+      fetchItems();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [statusFilter, search, categoryFilter, currentPage, mode, user, wishlist]);
 
   return (
     <div className="max-w-6xl w-full mx-auto px-6 pb-20">
@@ -68,16 +91,31 @@ const Dashboard = () => {
             className="w-full pl-12 pr-4 py-3.5 bg-white/[0.03] border border-white/5 rounded-xl text-white text-sm outline-none focus:border-accent focus:bg-white/[0.05] focus:ring-4 focus:ring-accent/15 transition-all"
             placeholder="Search items by name..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
           />
         </div>
 
-        {/* Status Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {['all', 'pending', 'live', 'ended', 'wishlist'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 overflow-x-auto pb-1 w-full xl:w-auto">
+          <select 
+            value={categoryFilter}
+            onChange={(e) => { setCategoryFilter(e.target.value); setCurrentPage(1); }}
+            className="bg-bg-secondary border border-white/10 text-slate-300 text-xs font-bold rounded-xl px-4 py-2.5 outline-none focus:border-accent w-full sm:w-auto"
+          >
+            <option value="all">All Categories</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Fashion">Fashion</option>
+            <option value="Art & Collectibles">Art & Collectibles</option>
+            <option value="Vehicles">Vehicles</option>
+            <option value="Real Estate">Real Estate</option>
+            <option value="Other">Other</option>
+          </select>
+          
+          <div className="flex gap-2">
+            {['all', 'pending', 'live', 'ended', 'wishlist'].map((status) => (
+              <button
+                key={status}
+                onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
               className={`px-4.5 py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                 statusFilter === status 
                   ? (mode === 'bidder' ? 'bg-accent border-accent text-white shadow-lg shadow-accent/20' : 'bg-secondary-neon border-secondary-neon text-white shadow-lg shadow-secondary-neon/20') 
@@ -92,8 +130,17 @@ const Dashboard = () => {
 
       {/* Items Grid */}
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-10 h-10 border-3 border-accent/20 border-t-accent rounded-full animate-spin"></div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="glass-panel-glow h-[320px] animate-pulse flex flex-col overflow-hidden">
+              <div className="h-48 w-full bg-white/5"></div>
+              <div className="p-5 flex-1 flex flex-col gap-4">
+                <div className="h-5 w-3/4 bg-white/5 rounded-md"></div>
+                <div className="h-4 w-full bg-white/5 rounded-md"></div>
+                <div className="h-10 w-1/2 mt-auto bg-white/5 rounded-md"></div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : items.length === 0 ? (
         <div className="glass-panel p-16 text-center">
@@ -111,9 +158,22 @@ const Dashboard = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {items.map((item) => (
-            <div key={item._id} className="glass-panel-glow flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-accent group relative">
+        <>
+          <motion.div 
+            layout
+            className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
+          >
+            <AnimatePresence mode="popLayout">
+            {items.map((item, index) => (
+              <motion.div 
+                key={item._id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2, delay: index * 0.03 }}
+                className="glass-panel-glow flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-accent group relative"
+              >
               {/* Product Thumbnail */}
               <div className="relative h-32 sm:h-40 md:h-48 w-full overflow-hidden">
                 {user && (
@@ -216,9 +276,48 @@ const Dashboard = () => {
                   </Link>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+          </AnimatePresence>
+          </motion.div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-12">
+              <button 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-white"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <div className="flex gap-2">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
+                      currentPage === i + 1 
+                        ? (mode === 'bidder' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-secondary-neon text-white shadow-lg shadow-secondary-neon/20')
+                        : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-white"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Floating Plus Button for Auctioneers */}

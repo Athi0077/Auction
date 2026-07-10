@@ -93,6 +93,10 @@ const ItemSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  auctionEndTime: {
+    type: Date,
+    default: null,
+  },
   winner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

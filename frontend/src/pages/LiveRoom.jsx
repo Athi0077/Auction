@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import confetti from 'canvas-confetti';
+import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext, BACKEND_URL } from '../context/AuthContext';
 import { ChevronLeft, Send, MessageSquare, History, Gavel, Play, ShieldAlert, Award, Clock, Mail, MessageCircle } from 'lucide-react';
 
@@ -20,7 +22,6 @@ const LiveRoom = () => {
   const [newMessage, setNewMessage] = useState('');
   const [customBid, setCustomBid] = useState('');
   const [loading, setLoading] = useState(true);
-  const [roomError, setRoomError] = useState('');
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'history'
 
   const socketRef = useRef(null);
@@ -108,8 +109,7 @@ const LiveRoom = () => {
     });
 
     socketRef.current.on('error_message', ({ message }) => {
-      setRoomError(message);
-      setTimeout(() => setRoomError(''), 4000);
+      toast.error(message);
     });
 
     return () => {
@@ -136,11 +136,10 @@ const LiveRoom = () => {
   };
 
   const handlePlaceBid = (amount) => {
-    setRoomError('');
     if (!socketRef.current || !user) return;
 
     if (amount <= currentBid) {
-      setRoomError(`Bid must be strictly higher than current bid (₹${currentBid})`);
+      toast.error(`Bid must be strictly higher than current bid (₹${currentBid})`);
       return;
     }
 
@@ -197,14 +196,6 @@ const LiveRoom = () => {
         <ChevronLeft size={16} />
         Back to Details Page
       </Link>
-
-      {/* Error alert toast */}
-      {roomError && (
-        <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-red-500 p-4 rounded-xl mb-6 text-sm shadow-lg shadow-red-500/5">
-          <ShieldAlert size={20} className="shrink-0" />
-          <span>{roomError}</span>
-        </div>
-      )}
 
       {/* Main room layout grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-8">
@@ -562,9 +553,13 @@ const LiveRoom = () => {
                   No bids placed yet.
                 </div>
               ) : (
-                [...bids].reverse().map((bid, index) => (
-                  <div
+                <AnimatePresence>
+                {[...bids].reverse().map((bid, index) => (
+                  <motion.div
                     key={index}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
                     className={`glass-panel p-3.5 flex justify-between items-center rounded-xl transition-all ${
                       index === 0 
                         ? 'border-accent bg-accent/5 shadow-md shadow-accent/5' 
@@ -582,10 +577,11 @@ const LiveRoom = () => {
                     <span className={`font-display font-extrabold text-sm ${
                       index === 0 ? 'text-accent-light' : 'text-slate-300'
                     }`}>
-                      ${bid.amount}
+                      ₹{bid.amount}
                     </span>
-                  </div>
-                ))
+                  </motion.div>
+                ))}
+                </AnimatePresence>
               )}
             </div>
           )}
