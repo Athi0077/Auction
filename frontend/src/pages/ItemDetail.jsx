@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AuthContext, BACKEND_URL } from '../context/AuthContext';
-import { ChevronLeft, Play, ArrowRight, Trophy, Mail, MessageCircle, Trash2, Heart } from 'lucide-react';
+import { ChevronLeft, Play, ArrowRight, Trophy, Mail, MessageCircle, Trash2, Heart, Edit } from 'lucide-react';
 
 const ItemDetail = () => {
   const { id } = useParams();
@@ -303,9 +303,16 @@ const ItemDetail = () => {
                 )}
               </div>
             )}
-            {/* Delete Option for Creator / Admin */}
+            {/* Edit and Delete Options for Creator / Admin */}
             {(isSeller || user?.role === 'admin' || user?.isAdmin) && (
-              <div className="mt-4 border-t border-white/5 pt-4">
+              <div className="mt-4 border-t border-white/5 pt-4 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigate(`/edit-item/${item._id}`)}
+                  className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent hover:text-accent text-slate-300 font-bold rounded-xl transition-all cursor-pointer text-sm flex items-center justify-center gap-2"
+                >
+                  <Edit size={16} />
+                  Edit Listing
+                </button>
                 <button
                   onClick={handleDelete}
                   className="w-full py-3 bg-red-500/10 border border-red-500/20 hover:bg-red-600 hover:border-red-600 hover:text-white text-red-400 font-bold rounded-xl transition-all cursor-pointer text-sm flex items-center justify-center gap-2"

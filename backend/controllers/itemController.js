@@ -154,9 +154,65 @@ const deleteItem = async (req, res) => {
   }
 };
 
+// @desc    Update an auction item
+// @route   PUT /api/items/:id
+// @access  Private (Owner or Admin only)
+const updateItem = async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    const sellerId = item.seller?._id || item.seller;
+    const isSeller = sellerId.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin' || req.user.isAdmin === true;
+
+    if (!isSeller && !isAdmin) {
+      return res.status(403).json({ message: 'You are not authorized to update this item' });
+    }
+
+    // Update fields
+    if (req.body.name) item.name = req.body.name;
+    if (req.body.category) item.category = req.body.category;
+    if (req.body.description) item.description = req.body.description;
+    if (req.body.startingPrice) {
+      item.startingPrice = Number(req.body.startingPrice);
+      if (!item.bids || item.bids.length === 0) {
+        item.currentBid = item.startingPrice;
+      }
+    }
+    if (req.body.duration) item.duration = req.body.duration;
+    if (req.body.discount !== undefined) item.discount = Number(req.body.discount);
+    if (req.body.finalPrice) item.finalPrice = Number(req.body.finalPrice);
+    if (req.body.ownershipHistory) item.ownershipHistory = req.body.ownershipHistory;
+    if (req.body.auctionStartDate) item.auctionStartDate = new Date(req.body.auctionStartDate);
+
+    // Update image if a new one is provided
+    if (req.file) {
+      if (item.image) {
+        const fs = require('fs');
+        const path = require('path');
+        const filePath = path.join(__dirname, '..', item.image);
+        fs.unlink(filePath, (err) => {
+          if (err) console.error('Failed to delete old image file:', err);
+        });
+      }
+      item.image = '/uploads/' + req.file.filename;
+    }
+
+    const updatedItem = await item.save();
+    res.json(updatedItem);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createItem,
   getItems,
   getItemById,
   deleteItem,
+  updateItem,
 };

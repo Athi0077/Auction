@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ListItem from './pages/ListItem';
+import EditItem from './pages/EditItem';
 import ItemDetail from './pages/ItemDetail';
 import LiveRoom from './pages/LiveRoom';
 import { Toaster } from 'react-hot-toast';
@@ -63,6 +64,11 @@ function App() {
             <Route path="/list-item" element={
               <ProtectedRoute>
                 <ListItem />
+              </ProtectedRoute>
+            } />
+            <Route path="/edit-item/:id" element={
+              <ProtectedRoute>
+                <EditItem />
               </ProtectedRoute>
             } />
             <Route path="/items/:id" element={
